@@ -1,11 +1,12 @@
 package server
 
 import (
-	"fmt"
-	"log"
-	"net/http"
 	sha1 "crypto/sha1"
 	b64 "encoding/base64"
+	"fmt"
+	"github.com/google/uuid"
+	"log"
+	"net/http"
 )
 
 //type WebsocketClient struct {
@@ -36,14 +37,24 @@ func StartServer() {
 }
 
 func webSocketHandler(w http.ResponseWriter, r *http.Request) {
+	guid, err := uuid.NewUUID()
+	if err != nil {
+		log.Printf("Error generating GUID: %s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 	websocketKey := r.Header.Get("Sec-WebSocket-Key")
 	if websocketKey == "" {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 
+	serverWsResKey := encodeWebsocketResponseKey(guid.String(), websocketKey)
+
 	w.Header().Set("Upgrade", "websocket")
 	w.Header().Set("Connection", "Upgrade")
+	w.Header().Set("Sec-WebSocket-Accept", serverWsResKey)
 	w.Header().Set("Set-websocket-Protocol", "chat")
+
+	w.WriteHeader(http.StatusSwitchingProtocols)
 }
 
 // the server response takes the websocket key from a client
